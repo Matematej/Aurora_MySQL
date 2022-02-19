@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Aurora
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+    Runtime: python3.9
+Parameters:
+  username:
+    Type: String
+    Description: Enter username.
+  password:
+    Type: String
+    Description: Enter password.
+  DbName:
+    Type: String
+    Description: Database name.
+    Default: MyAuroraDatabase
+Resources:
+  RDSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: RDSPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - secretsmanager:GetSecretValue
+          - secretsmanager:PutResourcePolicy
+          - secretsmanager:PutSecretValue
+          - secretsmanager:DeleteSecret
+          - secretsmanager:DescribeSecret
+          - secretsmanager:TagResource
+          Resource: '*'
+        - Sid: RDSDataServiceAccess
+          Effect: Allow
+          Action:
+          - dbqms:CreateFavoriteQuery
+          - dbqms:DescribeFavoriteQueries
+          - dbqms:UpdateFavoriteQuery
+          - dbqms:DeleteFavoriteQueries
+          - dbqms:GetQueryString
+          - dbqms:CreateQueryHistory
+          - dbqms:DescribeQueryHistory
+          - dbqms:UpdateQueryHistory
+          - dbqms:DeleteQueryHistory
+          - rds-data:ExecuteSql
+          - rds-data:ExecuteStatement
+          - rds-data:BatchExecuteStatement
+          - rds-data:BeginTransaction
+          - rds-data:CommitTransaction
+          - rds-data:RollbackTransaction
+          - secretsmanager:CreateSecret
+          - secretsmanager:ListSecrets
+          - secretsmanager:GetRandomPassword
+          - tag:GetResources
+          Resource: '*'
+  createtableFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+    - RDSCluster
+    - RDSsecret
+    Properties:
+      CodeUri: createtableFunction
+      Handler: createTable.lambda_handler
+      Environment:
+        Variables:
+          ClusterArn:
+            Fn::Sub: arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${RDSCluster}
+          SecretArn:
+            Ref: RDSsecret
+          DBname:
+            Ref: DbName
+      Events:
+        mbti:
+          Type: Api
+          Properties:
+            Path: /auroraCreateTable
+            Method: post
+      Policies:
+      - AWSLambdaExecute
+      - Ref: RDSPolicy
+  insertFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+    - RDSCluster
+    - RDSsecret
+    Properties:
+      CodeUri: insertFunction
+      Handler: insert.lambda_handler
+      Environment:
+        Variables:
+          ClusterArn:
+            Fn::Sub: arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${RDSCluster}
+          SecretArn:
+            Ref: RDSsecret
+          DBname:
+            Ref: DbName
+      Events:
+        mbti:
+          Type: Api
+          Properties:
+            Path: /aurora
+            Method: post
+      Policies:
+      - AWSLambdaExecute
+      - Ref: RDSPolicy
+  readFunction:
+    Type: AWS::Serverless::Function
+    DependsOn:
+    - RDSCluster
+    - RDSsecret
+    Properties:
+      CodeUri: readFunction
+      Handler: read.lambda_handler
+      Environment:
+        Variables:
+          ClusterArn:
+            Fn::Sub: arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${RDSCluster}
+          SecretArn:
+            Ref: RDSsecret
+          DBname:
+            Ref: DbName
+      Events:
+        mbti:
+          Type: Api
+          Properties:
+            Path: /aurora
+            Method: get
+      Policies:
+      - AWSLambdaExecute
+      - Ref: RDSPolicy
+  RDSsecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: RDSsecret
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "my-rds-user"}'
+        GenerateStringKey: password
+        PasswordLength: 25
+        ExcludeCharacters: '"@/\'
+        ExcludeNumbers: 'true'
+  DatabaseSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId:
+        Ref: RDSsecret
+      TargetId:
+        Ref: RDSCluster
+      TargetType: AWS::RDS::DBCluster
+  RDSCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DatabaseName:
+        Ref: DbName
+      EnableHttpEndpoint: true
+      BackupRetentionPeriod: 1
+      EngineMode: serverless
+      ScalingConfiguration:
+        AutoPause: true
+        MaxCapacity: 2
+        MinCapacity: 1
+        SecondsUntilAutoPause: 400
+      Engine: aurora
+      MasterUserPassword:
+        Ref: password
+      MasterUsername:
+        Ref: username
+Outputs:
+  ProdDataEndpoint:
+    Description: API mbti stage endpoint
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/aurora/

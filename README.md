@@ -9,3 +9,4 @@
 # How to run:
 #### Clone the asyncMessagingApp folder:     git clone https://github.com/Matematej/Aurora_MySQL.git
 #### Run sam deploy
+#### You can interact with the app through API Gateway

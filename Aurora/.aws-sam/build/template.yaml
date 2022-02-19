@@ -18,6 +18,11 @@ Parameters:
     Description: Database name.
     Default: MyAuroraDatabase
 Resources:
+  ServerlessRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors: '''*'''
   RDSPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -65,6 +70,7 @@ Resources:
     Properties:
       CodeUri: createtableFunction
       Handler: createTable.lambda_handler
+      FunctionName: createtable
       Environment:
         Variables:
           ClusterArn:
@@ -90,6 +96,7 @@ Resources:
     Properties:
       CodeUri: insertFunction
       Handler: insert.lambda_handler
+      FunctionName: insert
       Environment:
         Variables:
           ClusterArn:
@@ -115,6 +122,7 @@ Resources:
     Properties:
       CodeUri: readFunction
       Handler: read.lambda_handler
+      FunctionName: read
       Environment:
         Variables:
           ClusterArn:
@@ -142,16 +150,10 @@ Resources:
         PasswordLength: 25
         ExcludeCharacters: '"@/\'
         ExcludeNumbers: 'true'
-  DatabaseSecretAttachment:
-    Type: AWS::SecretsManager::SecretTargetAttachment
-    Properties:
-      SecretId:
-        Ref: RDSsecret
-      TargetId:
-        Ref: RDSCluster
-      TargetType: AWS::RDS::DBCluster
   RDSCluster:
     Type: AWS::RDS::DBCluster
+    DependsOn:
+    - RDSsecret
     Properties:
       DatabaseName:
         Ref: DbName
@@ -169,7 +171,7 @@ Resources:
       MasterUsername:
         Ref: username
 Outputs:
-  ProdDataEndpoint:
-    Description: API mbti stage endpoint
+  APIGatewayEndpoint:
+    Description: API Prod stage endpoint
     Value:
-      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/aurora/
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/

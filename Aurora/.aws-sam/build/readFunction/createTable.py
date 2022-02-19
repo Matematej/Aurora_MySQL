@@ -7,14 +7,14 @@ RDSclusterArn = os.environ["ClusterArn"]
 SecretArn = os.environ["SecretArn"]
 DBname = os.environ["DBname"]
 
-TableName = {}
-
 sql = """USE {DBname};
-CREATE TABLE mbtiTable (
+CREATE TABLE {TableName} (
       name varchar(100) NOT NULL,
       mbti varchar(40) NOT NULL,
       PRIMARY KEY ( name ));"""
 def lambda_handler(event, context):
+    decoded_event=json.loads(event['body'])
+    TableName = decoded_event["TableName"]
     response = rds_data.execute_statement(
         resourceArn = RDSclusterArn, 
         secretArn = SecretArn, 

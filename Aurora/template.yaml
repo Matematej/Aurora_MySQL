@@ -68,7 +68,7 @@ Resources:
           - secretsmanager:GetRandomPassword
           - tag:GetResources
           Resource: "*"
-#Lmabda
+#Lambda
   createtableFunction:
     Type: AWS::Serverless::Function
     DependsOn:
@@ -77,6 +77,7 @@ Resources:
     Properties:
       CodeUri: fn_aurora/
       Handler: createTable.lambda_handler
+      FunctionName: createtable
       Environment:
         Variables:
           ClusterArn: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${RDSCluster}"
@@ -101,6 +102,7 @@ Resources:
     Properties:
       CodeUri: fn_aurora/
       Handler: insert.lambda_handler
+      FunctionName: insert
       Environment:
         Variables:
           ClusterArn: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${RDSCluster}"
@@ -124,6 +126,7 @@ Resources:
     Properties:
       CodeUri: fn_aurora/
       Handler: read.lambda_handler
+      FunctionName: read
       Environment:
         Variables:
           ClusterArn: !Sub "arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:cluster:${RDSCluster}"
@@ -153,6 +156,8 @@ Resources:
 #RDS
   RDSCluster:
     Type: AWS::RDS::DBCluster
+    DependsOn:
+    - RDSsecret
     Properties:
       DatabaseName: !Ref DbName
       EnableHttpEndpoint: true

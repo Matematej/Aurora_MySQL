@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "mySql"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1lm7vhenf9v1w"
+s3_prefix = "mySql"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "username=\"username\" password=\"password\" DbName=\"MyAurora\""
